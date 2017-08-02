@@ -7,12 +7,12 @@ import (
 
 	"crypto/sha1"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	"github.com/furdarius/steamprotocol"
 	"github.com/furdarius/steamprotocol/crypto"
 	"github.com/furdarius/steamprotocol/messages"
 	"github.com/furdarius/steamprotocol/protobuf"
+	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 // Log on with the given details. You must always specify username and
@@ -23,28 +23,56 @@ import (
 //
 // If you don't use Steam Guard, username and password are enough
 
-type AuthDetails struct {
+// Details used to auth user
+type Details struct {
 	Username     string
 	Password     string
 	AuthCode     string
 	SharedSecret string
 }
 
+// Module used to auth user.
+//
+// The general gist of a Steam sign on is:
+// ChannelEncryptRequest (server->client): The server is asking a user to negotiate
+//     encryption on the specified universe.
+// ChannelEncryptResponse (client->server): The client generates a key and encrypts
+//     it with the universe public key. The specifics are in the implementation.
+// ChannelEncryptResult (server->client): EResult of whether the negotiation was successful.
+// ClientLogOn (client->server): Log on to service. Described in Steam and implementation.
+// Multi (meta message, server->client): Server sent multiple messages, decompress and process, see implementation.
+// ClientLogOnResponse (server->client): EResult of logon, as well as the authoritative steam id,
+//     session ID (needs to be in every message header like steamid), and the heartbeat interval.
+//     Every message after ClientLogOn needs the steamid and sessionID set in the header
+// ClientGetAppOwnershipTicket (client->server): Client normally requests winui (appid 7) ownership ticket.
+// ClientGetAppOwnershipTicketResponse (server->client): response to the above request,
+//     returns the ownership ticket for the request appid , or an error EResult.
+// ClientAccountInfo/EmailInfo/VACBanStatus (server->client): Account info
+// ClientFriendsList (server->client): List of friends by steam id. The readable info is sent in PersonaStates.
+// ClientLicenseList (server->client): List of licenses, which correspond to subs.
+// ClientAuthList (client->server): Request a batch of game connect tokens from Steam
+// ClientGameConnectTokens (server->client): Game connect tokens (see topicof tokens/tickets)
+// ClientSessionToken (server->client): Used for something!
+// ClientCMList (server->client): Authoritive list of CM servers,
+//     for clients that use the bootstrap list of CM servers. CM servers are Steam servers.
+// ClientHeartBeat (client->server): Heartbeat sent to server to signal connection is alive.
+//     Sent every few seconds, as specified in the LogOnResponse message.
 type Module struct {
 	eventManager *steamprotocol.EventManager
 	cl           *steamprotocol.Client
 	gen          *TOTPGenerator
-	details      AuthDetails
+	details      Details
 	sessionKey   []byte
 	steamID      uint64
 	sessionID    int32
 }
 
+// NewModule initialize new instance of auth Module.
 func NewModule(
 	cl *steamprotocol.Client,
 	eventManager *steamprotocol.EventManager,
 	gen *TOTPGenerator,
-	details AuthDetails,
+	details Details,
 ) *Module {
 	return &Module{
 		cl:           cl,
@@ -54,6 +82,7 @@ func NewModule(
 	}
 }
 
+// Subscribe used to start listen event and packets from eventManager.
 func (m *Module) Subscribe() {
 	m.eventManager.OnEvent(m.handleEvent)
 	m.eventManager.OnPacket(m.handlePacket)

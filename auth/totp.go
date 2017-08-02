@@ -28,15 +28,18 @@ type TimeTip struct {
 	MaxAttempts                       uint32 `json:"max_attempts"`
 }
 
+// TOTPGenerator is used to generate two factor auth code synced by time with Steam.
 // TOTP = Time-based One-time Password Algorithm
 type TOTPGenerator struct {
 	cl *http.Client
 }
 
+// NewTOTPGenerator initialize new instance of TOTPGenerator
 func NewTOTPGenerator(cl *http.Client) *TOTPGenerator {
 	return &TOTPGenerator{cl}
 }
 
+// TwoFactorSynced fetch time from Steam and return generated two-factor code synced by time with Steam
 func (gen *TOTPGenerator) TwoFactorSynced(sharedSecret string) (string, error) {
 	timeTip, err := gen.FetchTimeTip()
 	if err != nil {
@@ -46,6 +49,7 @@ func (gen *TOTPGenerator) TwoFactorSynced(sharedSecret string) (string, error) {
 	return gen.GenerateTwoFactorCode(sharedSecret, timeTip.Time)
 }
 
+// GenerateTwoFactorCode generate Steam two-factor code using current timestamp as parameter.
 func (gen *TOTPGenerator) GenerateTwoFactorCode(sharedSecret string, currentTimestamp int64) (string, error) {
 	data, err := base64.StdEncoding.DecodeString(sharedSecret)
 	if err != nil {
@@ -71,6 +75,7 @@ func (gen *TOTPGenerator) GenerateTwoFactorCode(sharedSecret string, currentTime
 	return string(buf), nil
 }
 
+// FetchTimeTip fetch time from Steam.
 func (gen *TOTPGenerator) FetchTimeTip() (*TimeTip, error) {
 	resp, err := gen.cl.Post(
 		"https://api.steampowered.com/ITwoFactorService/QueryTime/v1/",

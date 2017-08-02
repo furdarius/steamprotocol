@@ -1,3 +1,27 @@
+// Package crypto used to encrypt communication channel.
+//
+// After establishing a connection to a CM server, the server and client go through a handshake process
+// that establishes an encrypted connection.
+// Client messages are encrypted using AES with a session key that is generated
+// by the client during the handshake.
+// There exists evidence that a connection can be unencrypted,
+// because of the export restriction of strong cryptography from the US,
+// but it has not been observed.
+//
+// Steps:
+// 1. Server requests the client to encrypt traffic within the specified universe (normally Public)
+// 2. Client generates a 256bit session key.
+// 3. This key is encrypted by a 1024bit public RSA key for the specific universe.
+// 4. The encrypted key is sent to the server, along with a 32bit crc of the encrypted key.
+// 5. The server replies with an unencrypted success/failure message.
+// 6. All traffic from here is AES encrypted with the session key.
+//
+// Symmetric crypto
+// * All messages after the handshake are AES encrypted.
+// * A random 16 byte IV is generated for every message.
+// * This IV is AES encrypted in ECB mode using the session key generated during the handshake.
+// * Message data is encrypted with AES using the generated (not encrypted) IV and session key in CBC mode.
+// * The encrypted IV and encrypted message data are concatenated together and sent off.
 package crypto
 
 import (
@@ -10,17 +34,19 @@ import (
 	"fmt"
 	"hash/crc32"
 
-	"github.com/pkg/errors"
 	"github.com/furdarius/steamprotocol"
 	"github.com/furdarius/steamprotocol/messages"
+	"github.com/pkg/errors"
 )
 
+// Module used to encrypt communication channel.
 type Module struct {
 	eventManager *steamprotocol.EventManager
 	cl           *steamprotocol.Client
 	sessionKey   []byte
 }
 
+// NewModule initialize new instance of crypto Module.
 func NewModule(cl *steamprotocol.Client, eventManager *steamprotocol.EventManager) *Module {
 	return &Module{
 		cl:           cl,
@@ -28,6 +54,7 @@ func NewModule(cl *steamprotocol.Client, eventManager *steamprotocol.EventManage
 	}
 }
 
+// Subscribe used to start listen event and packets from eventManager.
 func (m *Module) Subscribe() {
 	m.eventManager.OnPacket(m.handlePacket)
 }

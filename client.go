@@ -15,7 +15,7 @@ import (
 
 const (
 	// Magic contains in all TCP packets, and must be read after packet length bytes.
-	Magic     uint32 = 0x31305456 // "VT01"
+	Magic uint32 = 0x31305456 // "VT01"
 
 	// ProtoMask used to check is it protobuf message.
 	// Message is proto if expression "rawMsg & ProtoMask > 0" is true.
@@ -23,7 +23,7 @@ const (
 
 	// EMsgMask used to get EMsg by rawMsg: EMsg(rawMsg & EMsgMask).
 	// Messages are identified by integer constants known as an EMsg.
-	EMsgMask         = ^ProtoMask
+	EMsgMask = ^ProtoMask
 )
 
 // Encryptor used to encrypt data on write and decrypt on read.

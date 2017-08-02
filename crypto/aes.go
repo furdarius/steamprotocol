@@ -6,10 +6,12 @@ import (
 	"crypto/rand"
 )
 
+// Aes is data encryptor
 type Aes struct {
 	block cipher.Block
 }
 
+// NewAes initialize new instance of Aes.
 func NewAes(b cipher.Block) *Aes {
 	return &Aes{b}
 }
